@@ -230,9 +230,37 @@
       visibility: visible;
     }
 
+    .time-warning {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%) scale(0.98);
+      z-index: 9999;
+      max-width: min(420px, calc(100% - 32px));
+      padding: 16px 20px;
+      border: 2px solid #111;
+      background: #fff;
+      color: #111;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.4;
+      text-align: center;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 120ms ease, visibility 120ms ease, transform 120ms ease;
+    }
+
+    .time-warning.is-visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
     .button-row {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: 1fr;
       margin-top: 0;
       gap: 12px;
     }
@@ -312,9 +340,8 @@
 
       <div class="decision-message" id="decisionMessage">please click the option before placing an order</div>
 
-      <div class="button-row" id="buttonRow">
-        <button class="button" type="button" data-action="add_to_cart" disabled>Place an order</button>
-        <button class="button" type="button" data-action="leave" disabled>Leave</button>
+      <div class="button-row is-enabled" id="buttonRow">
+        <button class="button" type="button" data-action="continue">Continue</button>
       </div>
 
     </section>
@@ -324,6 +351,8 @@
     </section>
   </main>
 
+  <div class="time-warning" id="timeWarning" role="status" aria-live="polite">Please carefully review the options before continuing.</div>
+
   <script src="products.js"></script>
   <script>
     const productSelect = document.getElementById('productSelect');
@@ -331,8 +360,8 @@
     const optionList = productSelect.querySelector('.custom-options');
     const productImage = document.getElementById('productImage');
     const buttonRow = document.getElementById('buttonRow');
-    const actionButtons = buttonRow.querySelectorAll('.button');
     const decisionMessage = document.getElementById('decisionMessage');
+    const timeWarning = document.getElementById('timeWarning');
 
     let selectedProductName = '';
     let selectedProductImage = '';
@@ -340,6 +369,7 @@
     let pageOpenTime = new Date().toISOString();
     let buttonsShownTime = pageOpenTime;
     let buttonsEnabledTime = '';
+    let canContinue = false;
     let firstOptionClickTime = '';
     let lastDisplayedImage = '';
     let dropdownOpened = '0';
@@ -349,8 +379,6 @@
     let totalClicks = 0;
     let optionClicks = 0;
     let imageSwitches = 0;
-    let addToCartClicks = 0;
-    let leaveClicks = 0;
     let invalidButtonClicks = 0;
 
     document.addEventListener('click', () => {
@@ -465,6 +493,7 @@
       selectedProductPrice = '$6.5';
       productSelect.classList.add('has-selection');
       decisionMessage.classList.remove('is-visible');
+      hideTimeWarning();
 
       if (!firstOptionClickTime) {
         firstOptionClickTime = new Date().toISOString();
@@ -484,6 +513,14 @@
       showProductImage(option.dataset.image, option.dataset.name, true);
     });
 
+    function showTimeWarning() {
+      timeWarning.classList.add('is-visible');
+    }
+
+    function hideTimeWarning() {
+      timeWarning.classList.remove('is-visible');
+    }
+
     document.addEventListener('click', (event) => {
       if (!productSelect.contains(event.target)) {
         const wasOpen = productSelect.classList.contains('open');
@@ -501,25 +538,9 @@
       if (!button) return;
 
       const action = button.dataset.action || '';
-      if (action === 'add_to_cart') {
-        addToCartClicks += 1;
-      }
-
-      if (action === 'leave') {
-        leaveClicks += 1;
-      }
-
-      if (action === 'add_to_cart' && !selectedProductName) {
+      if (!canContinue) {
         invalidButtonClicks += 1;
-        decisionMessage.textContent = 'please click the option before placing an order';
-        decisionMessage.classList.add('is-visible');
-        return;
-      }
-
-      if (action === 'leave' && optionReviewed !== '1') {
-        invalidButtonClicks += 1;
-        decisionMessage.textContent = 'please review the options before leaving';
-        decisionMessage.classList.add('is-visible');
+        showTimeWarning();
         return;
       }
 
@@ -532,12 +553,9 @@
         selectedPrice: selectedProductPrice,
         selectedProductImage: selectedProductImage,
         productChosen: selectedProductName ? '1' : '0',
-        noBuyOptionChosen: '0',
         totalClicks: String(totalClicks),
         optionClicks: String(optionClicks),
         imageSwitches: String(imageSwitches),
-        addToCartClicks: String(addToCartClicks),
-        leaveClicks: String(leaveClicks),
         invalidButtonClicks: String(invalidButtonClicks),
         pageOpenTime: pageOpenTime,
         buttonsShownTime: buttonsShownTime,
@@ -552,10 +570,7 @@
     buildProductOptions();
     preloadProductImages();
     window.setTimeout(() => {
-      buttonRow.classList.add('is-enabled');
-      actionButtons.forEach((button) => {
-        button.disabled = false;
-      });
+      canContinue = true;
       buttonsEnabledTime = new Date().toISOString();
     }, 10000);
   </script>
